@@ -482,7 +482,9 @@ svg{display:block;overflow:visible;}
  <div class="row"><label>🔊 Giọng cô giáo</label>
   <div class="seg" id="voiceSeg"><button data-v="1">Bật</button><button data-v="0">Tắt</button><button id="vTest">▶ Nghe thử</button></div>
  </div>
- <div class="row"><label>Tốc độ đọc: <span id="vRate"></span></label><input type="range" id="rRate" min="0.6" max="1.4" step="0.05"></div>
+ <div class="row"><label>Tốc độ đọc: <span id="vRate"></span></label><input type="range" id="rRate" min="0.6" max="1.6" step="0.05"></div>
+ <div class="row"><label>Độ cao giọng: <span id="vPitch"></span></label><input type="range" id="rPitch" min="0.8" max="1.8" step="0.05"></div>
+ <div class="row"><label>Cô gọi tên bạn trả lời đúng / chào bạn mới vào</label><div class="seg" id="chatSeg"><button data-c="1">Bật</button><button data-c="0">Tắt</button></div></div>
  <div class="row"><label>Giọng đọc</label><select id="selVoice"></select><div class="note" id="voiceNote"></div></div>
  <div class="btns"><button id="bRestart">🔄 Tiết mới</button><button id="bNext">⏭ Câu tiếp</button><button id="bClose" class="pri">✔ Đóng</button></div>
  <p class="note">Phím tắt: <b>S</b> mở/đóng bảng này · <b>N</b> chốt đáp án / sang câu · <b>H</b> ô gõ tay (chế độ Host).<br>Khi live: mở toàn màn hình (F11), trong TikTok LIVE Studio/OBS chọn "Chụp cửa sổ" và bật âm thanh để khán giả nghe cô giáo.</p>
@@ -647,7 +649,7 @@ function fit(){const s=Math.min(innerWidth/720,innerHeight/1280);stage.style.tra
 addEventListener('resize',fit);fit();
 
 /* ================= CẤU HÌNH ================= */
-const CFG={mode:'demo',qTime:20,revealTime:8,qPerTiet:20,cat:'all',voice:true,rate:1.0,voiceName:''};
+const CFG={mode:'demo',qTime:20,revealTime:8,qPerTiet:20,cat:'all',voice:true,rate:1.1,pitch:1.3,chatty:true,voiceName:''};
 try{Object.assign(CFG,JSON.parse(localStorage.getItem('lhc_cfg')||'{}'));}catch(e){}
 const IS_LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&location.protocol.startsWith('http');
 /* Tham số trên link: ?mode=demo|host|live  &ws=ws://localhost:8080  &giong=tat  &tg=20  &cau=20 */
@@ -656,7 +658,7 @@ const QWS=QS.get('ws');
 if(IS_LOCAL) CFG.mode='live';
 if(['demo','host','live'].includes(QS.get('mode'))) CFG.mode=QS.get('mode');
 if(QS.get('giong')==='tat') CFG.voice=false; if(QS.get('giong')==='bat') CFG.voice=true;
-if(+QS.get('tg')>=5) CFG.qTime=Math.min(120,+QS.get('tg')); if(+QS.get('cau')>=1) CFG.qPerTiet=Math.min(100,+QS.get('cau'));
+if(+QS.get('cao')>=0.5) CFG.pitch=Math.min(2,+QS.get('cao')); if(+QS.get('tg')>=5) CFG.qTime=Math.min(120,+QS.get('tg')); if(+QS.get('cau')>=1) CFG.qPerTiet=Math.min(100,+QS.get('cau'));
 function saveCfg(){try{localStorage.setItem('lhc_cfg',JSON.stringify(CFG));}catch(e){}}
 
 /* ================= TIỆN ÍCH ================= */
@@ -828,13 +830,24 @@ function loadVoices(){if(!('speechSynthesis' in window)){$('#voiceNote').textCon
  voices=speechSynthesis.getVoices();const vi=voices.filter(v=>/^vi/i.test(v.lang)||/viet/i.test(v.name));const list=vi.length?vi:voices;
  $('#selVoice').innerHTML=list.map(v=>`<option value="${esc(v.name)}">${esc(v.name)} (${v.lang})</option>`).join('');
  if(CFG.voiceName&&list.some(v=>v.name===CFG.voiceName))$('#selVoice').value=CFG.voiceName;
- else if(vi.length){const g=vi.find(v=>/google/i.test(v.name))||vi[0];$('#selVoice').value=g.name;}
- $('#voiceNote').textContent=vi.length?'✓ Đã có giọng tiếng Việt.':'⚠️ Máy chưa có giọng tiếng Việt. Dùng Chrome (có sẵn giọng Google tiếng Việt) hoặc cài gói giọng vi-VN cho hệ điều hành.';}
+ else if(vi.length){const g=vi.find(v=>/hoaimy|hoài my/i.test(v.name))||vi.find(v=>/google/i.test(v.name))||vi.find(v=>/linh|mai|female|nữ/i.test(v.name))||vi[0];$('#selVoice').value=g.name;}
+ const male=vi.length&&vi.every(v=>/\bAn\b|nam|male/i.test(v.name)&&!/female/i.test(v.name));
+ $('#voiceNote').textContent=vi.length?(male?'⚠️ Máy chỉ có giọng nam (Microsoft An). Muốn giọng nữ như video: mở game bằng Chrome (giọng Google) hoặc Edge (giọng HoaiMy).':'✓ Đã có giọng tiếng Việt.'):'⚠️ Máy chưa có giọng tiếng Việt. Dùng Chrome (có sẵn giọng Google tiếng Việt) hoặc cài gói giọng vi-VN cho hệ điều hành.';}
 if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
-function narrate(text,interrupt=true){if(!CFG.voice||!('speechSynthesis' in window))return;
- try{if(interrupt)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=voices.find(v=>v.name===$('#selVoice').value);
-  if(v){u.voice=v;u.lang=v.lang;}else u.lang='vi-VN';u.rate=CFG.rate;u.pitch=1.12;
-  u.onstart=()=>talk(true);u.onend=u.onerror=()=>{if(!speechSynthesis.speaking)talk(false);};speechSynthesis.speak(u);}catch(e){}}
+const SPQ=[];let spBusy=false,spSince=0,lastGreet=0;
+const speakName=n=>String(n).replace(/[^\p{L}\p{N} .]/gu,' ').replace(/\s+/g,' ').trim()||'bạn';
+function say(text,o={}){if(!CFG.voice||!('speechSynthesis' in window))return;const prio=o.prio??1;
+ if(o.interrupt){try{speechSynthesis.cancel();}catch(e){}SPQ.length=0;spBusy=false;}
+ if(spBusy&&performance.now()-spSince>9000){spBusy=false;}
+ if(prio<2&&(SPQ.length>=2||(prio<1&&(spBusy||SPQ.length))))return;
+ SPQ.push(text);pumpSpeech();}
+function pumpSpeech(){if(spBusy||!SPQ.length)return;const text=SPQ.shift();spBusy=true;spSince=performance.now();
+ try{const u=new SpeechSynthesisUtterance(text);const v=voices.find(v=>v.name===$('#selVoice').value);
+  if(v){u.voice=v;u.lang=v.lang;}else u.lang='vi-VN';u.rate=CFG.rate;u.pitch=CFG.pitch;
+  u.onstart=()=>talk(true);u.onend=u.onerror=()=>{spBusy=false;talk(false);setTimeout(pumpSpeech,180);};speechSynthesis.speak(u);}
+ catch(e){spBusy=false;}}
+function narrate(text,interrupt=true){say(text,{interrupt,prio:interrupt?3:2});}
+const PRAISE=[n=>`${n} đúng rồi!`,n=>`Giỏi quá ${n}!`,n=>`${n} nhanh ghê!`,n=>`Đúng rồi, ${n} ơi!`,n=>`Hoan hô ${n}!`];
 
 /* ================= LUỒNG CHƠI ================= */
 function pool(){return WORD_BANK.filter(w=>CFG.cat==='all'||w[0]===CFG.cat);}
@@ -847,10 +860,10 @@ function nextQuestion(){clearTimeout(S.timer);clearInterval(S.timer);S.q++;
  let scr;do{scr=shuffle(letters);}while(scr.join('')===letters.join('')&&new Set(letters).size>1);
  S.word={cat:w[0],ans:w[1],clue:w[2],letters};S.scr=scr;S.correctQ=[];S.players.forEach(p=>p.correct=false);
  S.phase='q';S.left=CFG.qTime;renderBoard();renderFast();renderSub();assignSeats(true);pose('point');
- narrate(`${S.greeted?'':'Xin chào cả lớp! Cô trò mình vào học nhé. '}Câu ${S.q}. Chủ đề ${w[0]}. ${w[2]} Cả lớp đoán xem là chữ gì?`);S.greeted=true;
+ narrate(`${S.greeted?'':'Chào cả lớp nha! '}Câu ${S.q}! ${w[2]} Là chữ gì nào?`);S.greeted=true;
  S.timer=setInterval(()=>{S.left--;$('#cd').textContent=Math.max(0,S.left);if(S.left<=0)reveal();},1000);}
 function reveal(){if(S.phase!=='q')return;clearInterval(S.timer);S.phase='r';revealBoard();pose('happy');assignSeats(true);saveToday();
- const f=S.correctQ[0];narrate(`Đáp án là ${S.word.ans.toLowerCase()}! ${f?`Bạn ${f.name} nhanh nhất. Có ${S.correctQ.length} bạn trả lời đúng.`:'Câu sau cố lên nhé cả lớp!'}`);
+ const f=S.correctQ[0];narrate(`Đáp án là, ${S.word.ans.toLowerCase()}! ${f?`${speakName(f.name)} nhanh nhất, giỏi quá!`:'Câu sau cố lên nha cả lớp!'}`);
  S.timer=setTimeout(nextQuestion,CFG.revealTime*1000);}
 function endTiet(){S.phase='end';pose('happy');const top=[...S.players.values()].filter(p=>p.tiet>0).sort((a,b)=>b.tiet-a.tiet).slice(0,3);
  $('#cat').textContent=`Tổng kết tiết ${S.tiet}`;$('#clue').textContent=top.length?'Chúc mừng các bạn học giỏi nhất!':'Hẹn gặp lại cả lớp!';
@@ -865,17 +878,17 @@ function isRight(t){const a=NZ(S.word.ans),c=NZ(t);if(!c)return false;
  return (' '+c+' ').includes(' '+a+' ');}
 function onChat(user,text){const p=player(user);if(S.phase!=='q'||p.correct)return;if(!isRight(text))return;
  p.correct=true;const k=S.correctQ.length;const pts=[10,7,5][k]||3;p.tiet+=pts;p.today+=pts;if(!p.firstAt)p.firstAt=performance.now();
- S.correctQ.push({name:p.name,pts});if(k<3)renderFast();else $('#doneTxt').textContent=`${S.correctQ.length} bạn đã đúng`;
+ S.correctQ.push({name:p.name,pts});if(CFG.chatty&&k<4)say(rnd(PRAISE)(speakName(p.name)),{prio:k===0?2:1});if(k<3)renderFast();else $('#doneTxt').textContent=`${S.correctQ.length} bạn đã đúng`;
  assignSeats(false);renderLB();}
 let giftQ=[],giftBusy=false;
 function onGift(user,gift,count){const p=player(user);count=Math.max(1,+count||1);p.gifts+=count;S.gifts+=count;
  if(!S.priority.includes(p.name))S.priority.push(p.name);assignSeats(false);giftQ.push({name:p.name,gift:gift||'Rose',count});showGift();
- narrate(`Cảm ơn ${p.name} đã tặng quà cho lớp!`,false);}
+ say(`Ôi! Cảm ơn ${speakName(p.name)} nha! Bạn được ưu tiên một ghế cuối lớp!`,{prio:2});}
 function showGift(){if(giftBusy||!giftQ.length)return;giftBusy=true;const g=giftQ.shift();
  $('#giftT1').textContent=`Cảm ơn ${g.name}!`;$('#giftT3').textContent=g.count>1?`${g.gift} x${g.count}`:g.gift;
  const el=$('#gift');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
  setTimeout(()=>{el.classList.remove('show');giftBusy=false;setTimeout(showGift,250);},4200);}
-function onJoin(user){player(user);renderCrowd();}
+function onJoin(user){const p=player(user);renderCrowd();if(CFG.chatty&&S.phase==='q'&&performance.now()-lastGreet>9000){lastGreet=performance.now();say(`Chào ${speakName(p.name)} vào lớp nha!`,{prio:0});}}
 
 /* ================= DEMO ================= */
 const BOTS=['Lan Anh 🌸','Minh Thư','Bảo Ngọc','Gia Huy','Khánh Linh 🎵','Tuấn Kiệt','Mai Chi','Hoàng Nam','Thu Trang','Quỳnh Như','Đức Anh','Phương Vy',
@@ -918,13 +931,15 @@ function setMode(m,boot){const prev=CFG.mode;CFG.mode=m;saveCfg();
 document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 function bindRange(id,lbl,key,fmt){const r=$(id);r.value=CFG[key];$(lbl).textContent=fmt?fmt(CFG[key]):CFG[key];
  r.oninput=()=>{CFG[key]=+r.value;$(lbl).textContent=fmt?fmt(CFG[key]):CFG[key];saveCfg();renderSub();};}
-bindRange('#rQ','#vQ','qTime');bindRange('#rR','#vR','revealTime');bindRange('#rN','#vN','qPerTiet');bindRange('#rRate','#vRate','rate',v=>(+v).toFixed(2));
+bindRange('#rQ','#vQ','qTime');bindRange('#rR','#vR','revealTime');bindRange('#rN','#vN','qPerTiet');bindRange('#rRate','#vRate','rate',v=>(+v).toFixed(2));bindRange('#rPitch','#vPitch','pitch',v=>(+v).toFixed(2));
+function setChatty(on){CFG.chatty=on;saveCfg();document.querySelectorAll('#chatSeg button').forEach(b=>b.classList.toggle('on',(b.dataset.c==='1')===on));}
+document.querySelectorAll('#chatSeg button').forEach(b=>b.onclick=()=>setChatty(b.dataset.c==='1'));setChatty(CFG.chatty!==false);
 $('#selCat').innerHTML='<option value="all">Tất cả chủ đề</option>'+[...new Set(WORD_BANK.map(w=>w[0]))].map(c=>`<option>${c}</option>`).join('');
 $('#selCat').value=CFG.cat;$('#selCat').onchange=e=>{CFG.cat=e.target.value;saveCfg();};
 $('#selVoice').onchange=e=>{CFG.voiceName=e.target.value;saveCfg();};
 function setVoice(on){CFG.voice=on;saveCfg();document.querySelectorAll('#voiceSeg [data-v]').forEach(b=>b.classList.toggle('on',(b.dataset.v==='1')===on));if(!on&&'speechSynthesis' in window){speechSynthesis.cancel();talk(false);}}
 document.querySelectorAll('#voiceSeg [data-v]').forEach(b=>b.onclick=()=>setVoice(b.dataset.v==='1'));
-$('#vTest').onclick=()=>{const o=CFG.voice;CFG.voice=true;narrate('Chào cả lớp! Cô giáo đây, các em nghe rõ cô nói không nào?');CFG.voice=o;};
+$('#vTest').onclick=()=>{const o=CFG.voice;CFG.voice=true;narrate('Chào cả lớp nha! Cô giáo đây, các em nghe rõ không nào?');CFG.voice=o;};
 $('#wsBtn').onclick=()=>connectWS($('#wsUrl').value.trim());
 function togglePanel(f){const p=$('#panel');p.style.display=(f??p.style.display!=='block')?'block':'none';}
 $('#menuBtn').onclick=()=>togglePanel();$('#bClose').onclick=()=>togglePanel(false);
@@ -940,7 +955,7 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==
 /* Trình duyệt chỉ cho đọc giọng sau lần bấm đầu tiên: bấm vào game là cô đọc lại câu hiện tại */
 let unlocked=false;
 function unlockVoice(e){if(unlocked)return;unlocked=true;if(e&&e.target&&e.target.closest&&e.target.closest('#panel'))return;
- if(S.phase==='q'&&S.word)narrate(`Xin chào cả lớp! Câu ${S.q}. Chủ đề ${S.word.cat}. ${S.word.clue} Cả lớp đoán xem là chữ gì?`);}
+ if(S.phase==='q'&&S.word)narrate(`Chào cả lớp nha! Câu ${S.q}! ${S.word.clue} Là chữ gì nào?`);}
 addEventListener('pointerdown',unlockVoice);addEventListener('keydown',unlockVoice);
 
 /* ================= KHỞI ĐỘNG ================= */
