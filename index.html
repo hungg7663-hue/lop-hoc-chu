@@ -111,6 +111,10 @@ svg{display:block;overflow:visible;}
 .cpill .sc{color:#e0682a;}
 
 /* ---------- Popup quà ---------- */
+.pp{position:absolute;z-index:35;transform:translate(-50%,0);font-family:'Baloo 2';font-weight:800;font-size:26px;color:#fff;
+  text-shadow:0 2px 0 #2a9c46,0 0 6px #1d7a35;animation:ppUp 1.4s ease-out forwards;pointer-events:none;}
+.pp.big{font-size:34px;color:#ffe36b;text-shadow:0 2px 0 #c0620f,0 0 8px #b35a0b;}
+@keyframes ppUp{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}15%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-60px) scale(1)}}
 #gift{left:6px;top:236px;width:284px;box-sizing:border-box;padding:8px 12px 7px;border-radius:10px;
   background:linear-gradient(#ee2c97,#d71b7e);color:#fff;box-shadow:0 5px 14px rgba(0,0,0,.35);display:none;z-index:30;}
 #gift .g1{display:flex;align-items:center;gap:7px;font-weight:900;font-size:18px;}
@@ -850,7 +854,33 @@ function pumpSpeech(){if(spBusy||!SPQ.length)return;const text=SPQ.shift();spBus
   u.onstart=()=>talk(true);u.onend=u.onerror=()=>{spBusy=false;talk(false);setTimeout(pumpSpeech,180);};speechSynthesis.speak(u);}
  catch(e){spBusy=false;}}
 function narrate(text,interrupt=true){say(text,{interrupt,prio:interrupt?3:2});}
-const PRAISE=[n=>`${n} đúng rồi!`,n=>`Giỏi quá ${n}!`,n=>`${n} nhanh ghê!`,n=>`Đúng rồi, ${n} ơi!`,n=>`Hoan hô ${n}!`];
+/* ===== LỜI THOẠI CÔ GIÁO (chọn ngẫu nhiên, không lặp lại câu vừa nói) ===== */
+const LINES={
+ greet:[()=>'Chào cả lớp nha! Hôm nay mình cùng học chữ thật vui nào!',()=>'Xin chào các em! Cô trò mình vào lớp thôi!',()=>'Chào mừng các bạn đến với lớp học trên mây! Sẵn sàng chưa nào?'],
+ intro:[(q,c,cat)=>`Câu ${q} nè cả lớp! ${c} Là chữ gì nào?`,(q,c,cat)=>`Tiếp nha! Câu ${q}, chủ đề ${cat}. ${c} Bạn nào đoán nhanh nhất đây?`,
+  (q,c)=>`Cô đố cả lớp nè! ${c} Đoán đi các em ơi!`,(q,c)=>`Câu ${q}! ${c} Gõ đáp án vào bình luận nha!`,(q,c)=>`Nào nào, tập trung nha! ${c} Chữ gì đây ta?`,
+  (q,c,cat)=>`Câu ${q} thuộc chủ đề ${cat} nè. ${c} Ai giỏi đoán ra nào?`,(q,c)=>`Câu mới đây! ${c} Xếp lại các chữ cái giúp cô nha!`],
+ first:[n=>`Wow! ${n} trả lời đúng đầu tiên! Giỏi quá!`,n=>`Chúc mừng ${n} nhanh nhất lớp! Cộng mười điểm nha!`,n=>`Hoan hô ${n}! Nhanh như chớp luôn!`,
+  n=>`Tuyệt vời ${n} ơi, đúng rồi! Em là số một!`,n=>`Chính xác! ${n} về nhất câu này rồi!`,n=>`Ôi giỏi quá! ${n} trả lời đúng đầu tiên!`],
+ second:[n=>`${n} cũng đúng rồi! Về nhì, cộng bảy điểm!`,n=>`Chúc mừng ${n}, hạng nhì nha!`,n=>`${n} nhanh thứ hai, giỏi lắm!`],
+ third:[n=>`${n} về thứ ba! Cộng năm điểm nha!`,n=>`Chúc mừng ${n}, đứng thứ ba!`,n=>`${n} cũng đúng rồi, giỏi quá!`],
+ other:[n=>`${n} đúng rồi!`,n=>`Chúc mừng ${n}!`,n=>`Giỏi quá ${n}!`,n=>`${n} cũng đúng luôn!`,n=>`Đúng rồi ${n} ơi!`,n=>`Hoan hô ${n}!`,n=>`${n} giỏi ghê!`],
+ streak:[(n,k)=>`Ôi! ${n} đúng ${k} câu liên tiếp rồi! Siêu quá!`,(n,k)=>`${n} đang có chuỗi ${k} câu đúng liền! Cô khen nha!`,(n,k)=>`Không thể tin được! ${n} đúng ${k} câu liên tục!`],
+ milestone:[k=>`Đã có ${k} bạn trả lời đúng rồi! Các bạn khác nhanh lên nha!`,k=>`Wow, ${k} bạn đúng rồi kìa! Lớp mình giỏi quá!`,k=>`${k} bạn đã đúng! Còn ai chưa trả lời không nè?`],
+ hint:[ch=>`Câu này hơi khó ha? Cô gợi ý nè: chữ đầu tiên là ${ch}!`,ch=>`Cô mách nhỏ nha: bắt đầu bằng chữ ${ch} đó!`,ch=>`Gợi ý thêm cho cả lớp: chữ này bắt đầu bằng ${ch}!`],
+ hurry:[()=>'Còn năm giây nữa thôi!',()=>'Nhanh lên nào, sắp hết giờ rồi!',()=>'Năm giây cuối! Ai chưa trả lời nhanh lên nha!'],
+ reveal:[(a,n,f)=>`Đáp án là, ${a}! Chúc mừng ${n} bạn đã trả lời đúng!`,(a,n,f)=>`Và đáp án chính xác là... ${a}! ${f} nhanh nhất câu này!`,
+  (a,n,f)=>`Đúng rồi, là chữ ${a}! Giỏi lắm cả lớp ơi!`,(a,n,f)=>`Đáp án là ${a} nha! ${n} bạn đúng, cô vui quá!`],
+ revealNone:[a=>`Tiếc quá, chưa ai đoán ra! Đáp án là ${a} nha. Câu sau cố lên!`,a=>`Câu này khó ghê! Đáp án là ${a}. Không sao, câu sau mình làm được!`,a=>`Đáp án là ${a} nè! Nhớ chữ này nha cả lớp!`],
+ leader:[(n,sc)=>`Hiện tại ${n} đang dẫn đầu lớp với ${sc} điểm! Ai vượt được không nè?`,(n,sc)=>`${n} đang là lớp trưởng với ${sc} điểm đó!`],
+ cheer:[()=>'Nhớ thả tim và chia sẻ để rủ bạn bè vào học cùng nha!',()=>'Tương tác nhiều để giữ chỗ ngồi trong lớp nha các em!',()=>'Đoán nhanh, điểm cao là được vào lớp ngồi đó!'],
+ gift:[(n,g)=>`Ôi! Cảm ơn ${n} đã tặng ${g}! Cô thương lắm!`,(n,g)=>`Cảm ơn ${n} nha! Bạn được ưu tiên một ghế cuối lớp!`,(n,g)=>`Wow, ${n} tặng quà cho lớp mình! Cảm ơn bạn nhiều nha!`],
+ join:[n=>`Chào ${n} vào lớp nha!`,n=>`${n} ơi, vào học cùng cả lớp nào!`,n=>`Chào mừng ${n}! Gõ đáp án vào bình luận nha!`],
+ end:[(t,n)=>`Hết tiết ${t} rồi! ${n?`Chúc mừng ${n} đứng đầu lớp!`:''} Nghỉ một chút rồi học tiếp nha!`,(t,n)=>`Tiết ${t} kết thúc! ${n?`Lớp trưởng tiết này là ${n}, giỏi quá!`:''} Chuẩn bị sang tiết mới nha!`]
+};
+const lastLine={};
+function line(key,...a){const arr=LINES[key];let i;do{i=Math.floor(Math.random()*arr.length);}while(arr.length>1&&i===lastLine[key]);lastLine[key]=i;return arr[i](...a);}
+const nm=n=>{const t=speakName(n).split(' ');return t.slice(0,3).join(' ');};
 
 /* ================= LUỒNG CHƠI ================= */
 function pool(){return WORD_BANK.filter(w=>CFG.cat==='all'||w[0]===CFG.cat);}
@@ -863,35 +893,51 @@ function nextQuestion(){clearTimeout(S.timer);clearInterval(S.timer);S.q++;
  let scr;do{scr=shuffle(letters);}while(scr.join('')===letters.join('')&&new Set(letters).size>1);
  S.word={cat:w[0],ans:w[1],clue:w[2],letters};S.scr=scr;S.correctQ=[];S.players.forEach(p=>p.correct=false);
  S.phase='q';S.left=CFG.qTime;renderBoard();renderFast();renderSub();assignSeats(true);pose('point');
- narrate(`${S.greeted?'':'Chào cả lớp nha! '}Câu ${S.q}! ${w[2]} Là chữ gì nào?`);S.greeted=true;
- S.timer=setInterval(()=>{S.left--;$('#cd').textContent=Math.max(0,S.left);if(S.left<=0)reveal();},1000);}
+ narrate(`${!S.greeted?line('greet')+' ':''}${line('intro',S.q,w[2].replace(/\.$/,'.'),w[0])}`.replace(/^/,''));S.greeted=true;S.hinted=false;S.milestone=0;
+ if(CFG.chatty&&S.q%4===0)say(line('cheer'),{prio:0});
+ S.timer=setInterval(()=>{S.left--;$('#cd').textContent=Math.max(0,S.left);
+  if(CFG.chatty&&!S.hinted&&S.left===Math.floor(CFG.qTime/2)&&S.correctQ.length<3&&S.word.letters.length>2){S.hinted=true;say(line('hint',S.word.letters[0]),{prio:2});}
+  if(CFG.chatty&&S.left===5&&CFG.qTime>=12)say(line('hurry'),{prio:1});
+  if(S.left<=0)reveal();},1000);}
 function reveal(){if(S.phase!=='q')return;clearInterval(S.timer);S.phase='r';revealBoard();pose('happy');assignSeats(true);saveToday();
- const f=S.correctQ[0];narrate(`Đáp án là, ${S.word.ans.toLowerCase()}! ${f?`${speakName(f.name)} nhanh nhất, giỏi quá!`:'Câu sau cố lên nha cả lớp!'}`);
+ const f=S.correctQ[0],a=S.word.ans.toLowerCase();
+ S.players.forEach(p=>{if(!p.correct)p.streak=0;});
+ narrate(f?line('reveal',a,S.correctQ.length,nm(f.name)):line('revealNone',a));
+ if(CFG.chatty&&S.q%3===0){const L=[...S.players.values()].filter(p=>p.tiet>0).sort((x,y)=>y.tiet-x.tiet)[0];if(L)say(line('leader',nm(L.name),L.tiet),{prio:1});}
  S.timer=setTimeout(nextQuestion,CFG.revealTime*1000);}
 function endTiet(){S.phase='end';pose('happy');const top=[...S.players.values()].filter(p=>p.tiet>0).sort((a,b)=>b.tiet-a.tiet).slice(0,3);
  $('#cat').textContent=`Tổng kết tiết ${S.tiet}`;$('#clue').textContent=top.length?'Chúc mừng các bạn học giỏi nhất!':'Hẹn gặp lại cả lớp!';
  $('#tiles').innerHTML='';$('#blanks').innerHTML='';$('#cd').style.display='none';$('#dapan').style.display='none';
  $('#tiles').innerHTML=top.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;background:#fcf6e3;border-radius:8px;padding:4px 10px;max-width:120px;box-shadow:0 3px 0 #b39a62">${shield(i+1,20)}<span style="font-weight:900;font-size:14px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span></div>`).join('');
- narrate(`Hết tiết ${S.tiet} rồi! ${top[0]?`Chúc mừng bạn ${top[0].name} đứng đầu lớp.`:''} Nghỉ một chút rồi mình học tiết tiếp theo nhé!`);
+ narrate(line('end',S.tiet,top[0]?nm(top[0].name):''));
  S.timer=setTimeout(()=>{S.tiet++;startTiet();},10000);}
 
+function popPoints(name,pts){const i=S.seats.indexOf(name);let x,y;
+ if(i>=0){const R=ROWS[Math.floor(i/5)];x=360+(i%5-2)*R.dx;y=R.y-14;}else{x=360;y=540;}
+ const d=document.createElement('div');d.className='pp'+(pts>=10?' big':'');d.textContent='+'+pts;d.style.left=x+'px';d.style.top=y+'px';
+ $('#stage').appendChild(d);setTimeout(()=>d.remove(),1400);}
 /* ================= SỰ KIỆN: bình luận, quà ================= */
 function isRight(t){const a=NZ(S.word.ans),c=NZ(t);if(!c)return false;
  if(c===a||c.replace(/ /g,'')===a.replace(/ /g,''))return true;if(ND(t)===ND(S.word.ans))return true;
  return (' '+c+' ').includes(' '+a+' ');}
 function onChat(user,text){const p=player(user);if(S.phase!=='q'||p.correct)return;if(!isRight(text))return;
  p.correct=true;const k=S.correctQ.length;const pts=[10,7,5][k]||3;p.tiet+=pts;p.today+=pts;if(!p.firstAt)p.firstAt=performance.now();
- S.correctQ.push({name:p.name,pts});if(CFG.chatty&&k<4)say(rnd(PRAISE)(speakName(p.name)),{prio:k===0?2:1});if(k<3)renderFast();else $('#doneTxt').textContent=`${S.correctQ.length} bạn đã đúng`;
+ S.correctQ.push({name:p.name,pts});p.streak=(p.streak||0)+1;popPoints(p.name,pts);
+ if(CFG.chatty){const n=nm(p.name),c=S.correctQ.length;
+  if(k===0)say(line('first',n),{prio:2});else if(k===1)say(line('second',n),{prio:1});else if(k===2)say(line('third',n),{prio:1});
+  else if([3,5,10].includes(p.streak))say(line('streak',n,p.streak),{prio:1});else say(line('other',n),{prio:0});
+  if([5,10,20,30,50].includes(c)&&c>S.milestone){S.milestone=c;say(line('milestone',c),{prio:1});}
+  if(k<3&&[3,5,10].includes(p.streak))say(line('streak',n,p.streak),{prio:1});}if(k<3)renderFast();else $('#doneTxt').textContent=`${S.correctQ.length} bạn đã đúng`;
  assignSeats(false);renderLB();}
 let giftQ=[],giftBusy=false;
 function onGift(user,gift,count){const p=player(user);count=Math.max(1,+count||1);p.gifts+=count;S.gifts+=count;
  if(!S.priority.includes(p.name))S.priority.push(p.name);assignSeats(false);giftQ.push({name:p.name,gift:gift||'Rose',count});showGift();
- say(`Ôi! Cảm ơn ${speakName(p.name)} nha! Bạn được ưu tiên một ghế cuối lớp!`,{prio:2});}
+ say(line('gift',nm(p.name),/rose/i.test(gift||'Rose')?'hoa hồng':(gift||'quà')),{prio:2});}
 function showGift(){if(giftBusy||!giftQ.length)return;giftBusy=true;const g=giftQ.shift();
  $('#giftT1').textContent=`Cảm ơn ${g.name}!`;$('#giftT3').textContent=g.count>1?`${g.gift} x${g.count}`:g.gift;
  const el=$('#gift');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
  setTimeout(()=>{el.classList.remove('show');giftBusy=false;setTimeout(showGift,250);},4200);}
-function onJoin(user){const p=player(user);renderCrowd();if(CFG.chatty&&S.phase==='q'&&performance.now()-lastGreet>9000){lastGreet=performance.now();say(`Chào ${speakName(p.name)} vào lớp nha!`,{prio:0});}}
+function onJoin(user){const p=player(user);renderCrowd();if(CFG.chatty&&S.phase==='q'&&performance.now()-lastGreet>9000){lastGreet=performance.now();say(line('join',nm(p.name)),{prio:0});}}
 
 /* ================= DEMO ================= */
 const BOTS=['Lan Anh 🌸','Minh Thư','Bảo Ngọc','Gia Huy','Khánh Linh 🎵','Tuấn Kiệt','Mai Chi','Hoàng Nam','Thu Trang','Quỳnh Như','Đức Anh','Phương Vy',
