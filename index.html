@@ -488,7 +488,9 @@ svg{display:block;overflow:visible;}
  </div>
  <div class="row"><label>Tốc độ đọc: <span id="vRate"></span></label><input type="range" id="rRate" min="0.6" max="1.6" step="0.05"></div>
  <div class="row"><label>Độ cao giọng: <span id="vPitch"></span></label><input type="range" id="rPitch" min="0.8" max="1.8" step="0.05"></div>
- <div class="row"><label>Cô gọi tên bạn trả lời đúng / chào bạn mới vào</label><div class="seg" id="chatSeg"><button data-c="1">Bật</button><button data-c="0">Tắt</button></div></div>
+ <div class="row"><label>💬 Cô đọc to bình luận của khán giả</label><div class="seg" id="cmtSeg"><button data-c="1">Bật</button><button data-c="0">Tắt</button></div></div>
+ <div class="row"><label>👋 Cô chào tên người mới vào live / theo dõi / chia sẻ</label><div class="seg" id="joinSeg"><button data-c="1">Bật</button><button data-c="0">Tắt</button></div></div>
+ <div class="row"><label>Cô chúc mừng bạn trả lời đúng, gợi ý, giục giờ</label><div class="seg" id="chatSeg"><button data-c="1">Bật</button><button data-c="0">Tắt</button></div></div>
  <div class="row"><label>Giọng đọc</label><select id="selVoice"></select><div class="note" id="voiceNote"></div></div>
  <div class="btns"><button id="bRestart">🔄 Tiết mới</button><button id="bNext">⏭ Câu tiếp</button><button id="bClose" class="pri">✔ Đóng</button></div>
  <p class="note">Phím tắt: <b>S</b> mở/đóng bảng này · <b>N</b> chốt đáp án / sang câu · <b>H</b> ô gõ tay (chế độ Host).<br>Khi live: mở toàn màn hình (F11), trong TikTok LIVE Studio/OBS chọn "Chụp cửa sổ" và bật âm thanh để khán giả nghe cô giáo.</p>
@@ -654,7 +656,7 @@ function fit(){const s=Math.min(innerWidth/720,innerHeight/1280);stage.style.tra
 addEventListener('resize',fit);fit();
 
 /* ================= CẤU HÌNH ================= */
-const CFG={mode:'demo',qTime:20,revealTime:8,qPerTiet:20,cat:'all',voice:true,rate:1.1,pitch:1.3,chatty:true,voiceName:''};
+const CFG={mode:'demo',qTime:20,revealTime:8,qPerTiet:20,cat:'all',voice:true,rate:1.1,pitch:1.3,chatty:true,readCmt:true,greetJoin:true,voiceName:''};
 try{Object.assign(CFG,JSON.parse(localStorage.getItem('lhc_cfg')||'{}'));}catch(e){}
 const IS_LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&location.protocol.startsWith('http');
 /* Tham số trên link: ?mode=demo|host|live  &ws=ws://localhost:8080  &giong=tat  &tg=20  &cau=20 */
@@ -662,6 +664,7 @@ const QS=(()=>{try{return new URLSearchParams(location.search);}catch(e){return 
 const QWS=QS.get('ws');
 if(IS_LOCAL) CFG.mode='live';
 if(['demo','host','live'].includes(QS.get('mode'))) CFG.mode=QS.get('mode');
+if(QS.get('doc')==='tat') CFG.readCmt=false; if(QS.get('doc')==='bat') CFG.readCmt=true; if(QS.get('chao')==='tat') CFG.greetJoin=false; if(QS.get('chao')==='bat') CFG.greetJoin=true;
 if(QS.get('giong')==='tat') CFG.voice=false; if(QS.get('giong')==='bat') CFG.voice=true;
 if(+QS.get('cao')>=0.5) CFG.pitch=Math.min(2,+QS.get('cao')); if(+QS.get('tg')>=5) CFG.qTime=Math.min(120,+QS.get('tg')); if(+QS.get('cau')>=1) CFG.qPerTiet=Math.min(100,+QS.get('cau'));
 function saveCfg(){try{localStorage.setItem('lhc_cfg',JSON.stringify(CFG));}catch(e){}}
@@ -875,7 +878,10 @@ const LINES={
  leader:[(n,sc)=>`Hiện tại ${n} đang dẫn đầu lớp với ${sc} điểm! Ai vượt được không nè?`,(n,sc)=>`${n} đang là lớp trưởng với ${sc} điểm đó!`],
  cheer:[()=>'Nhớ thả tim và chia sẻ để rủ bạn bè vào học cùng nha!',()=>'Tương tác nhiều để giữ chỗ ngồi trong lớp nha các em!',()=>'Đoán nhanh, điểm cao là được vào lớp ngồi đó!'],
  gift:[(n,g)=>`Ôi! Cảm ơn ${n} đã tặng ${g}! Cô thương lắm!`,(n,g)=>`Cảm ơn ${n} nha! Bạn được ưu tiên một ghế cuối lớp!`,(n,g)=>`Wow, ${n} tặng quà cho lớp mình! Cảm ơn bạn nhiều nha!`],
- join:[n=>`Chào ${n} vào lớp nha!`,n=>`${n} ơi, vào học cùng cả lớp nào!`,n=>`Chào mừng ${n}! Gõ đáp án vào bình luận nha!`],
+ join:[n=>`Chào ${n} vào lớp nha!`,n=>`${n} ơi, vào học cùng cả lớp nào!`,n=>`Chào mừng ${n}! Gõ đáp án vào bình luận nha!`,n=>`Ồ, ${n} vào lớp rồi! Chào các em nha!`,n=>`Xin chào ${n}! Ngồi xuống học cùng cô nào!`],
+ cmt:[(n,t)=>`${n} nói: ${t}`,(n,t)=>`${n} bảo: ${t}`,(n,t)=>`Bạn ${n} nói: ${t}`],
+ follow:[n=>`Cảm ơn ${n} đã theo dõi kênh nha!`,n=>`Yeah! ${n} vừa theo dõi lớp mình, cảm ơn em!`],
+ share:[n=>`Cảm ơn ${n} đã chia sẻ buổi học nha!`,n=>`${n} vừa chia sẻ live, cô cảm ơn nhiều!`],
  end:[(t,n)=>`Hết tiết ${t} rồi! ${n?`Chúc mừng ${n} đứng đầu lớp!`:''} Nghỉ một chút rồi học tiếp nha!`,(t,n)=>`Tiết ${t} kết thúc! ${n?`Lớp trưởng tiết này là ${n}, giỏi quá!`:''} Chuẩn bị sang tiết mới nha!`]
 };
 const lastLine={};
@@ -920,7 +926,8 @@ function popPoints(name,pts){const i=S.seats.indexOf(name);let x,y;
 function isRight(t){const a=NZ(S.word.ans),c=NZ(t);if(!c)return false;
  if(c===a||c.replace(/ /g,'')===a.replace(/ /g,''))return true;if(ND(t)===ND(S.word.ans))return true;
  return (' '+c+' ').includes(' '+a+' ');}
-function onChat(user,text){const p=player(user);if(S.phase!=='q'||p.correct)return;if(!isRight(text))return;
+function onChat(user,text){const p=player(user);const right=S.phase==='q'&&S.word&&isRight(text);
+ if(!right||p.correct){if(!right)readComment(p,text);return;}
  p.correct=true;const k=S.correctQ.length;const pts=[10,7,5][k]||3;p.tiet+=pts;p.today+=pts;if(!p.firstAt)p.firstAt=performance.now();
  S.correctQ.push({name:p.name,pts});p.streak=(p.streak||0)+1;popPoints(p.name,pts);
  if(CFG.chatty){const n=nm(p.name),c=S.correctQ.length;
@@ -937,7 +944,24 @@ function showGift(){if(giftBusy||!giftQ.length)return;giftBusy=true;const g=gift
  $('#giftT1').textContent=`Cảm ơn ${g.name}!`;$('#giftT3').textContent=g.count>1?`${g.gift} x${g.count}`:g.gift;
  const el=$('#gift');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
  setTimeout(()=>{el.classList.remove('show');giftBusy=false;setTimeout(showGift,250);},4200);}
-function onJoin(user){const p=player(user);renderCrowd();if(CFG.chatty&&S.phase==='q'&&performance.now()-lastGreet>9000){lastGreet=performance.now();say(line('join',nm(p.name)),{prio:0});}}
+let joinBuf=[];
+function onJoin(user){const p=player(user);renderCrowd();if(!CFG.greetJoin)return;const n=nm(p.name);if(!joinBuf.includes(n))joinBuf.push(n);if(joinBuf.length>8)joinBuf.shift();}
+function onSocial(kind,user){const p=player(user);if(!CFG.greetJoin)return;socialQ.push({kind,n:nm(p.name)});if(socialQ.length>3)socialQ.shift();}
+/* Đọc bình luận: lọc tục tĩu, link, tin lặp, và tin giống đoán đáp án */
+const BADW=/(\bd[iị]t\b|\bđụ\b|\bđéo\b|\bdeo\b|\bl[oồ]n\b|\bc[aặ]c\b|\bbu[oồ]i\b|\bvcl\b|\bvkl\b|\bvl\b|\bđm\b|\bdm\b|\bdmm\b|\bđmm\b|\bcc\b|\bclm\b|\bcmm\b|\bđĩ\b|\bfuck|\bshit|\bsex\b|óc chó|\boc cho\b)/i;
+let cmtQ=[],socialQ=[],recentCmt=[],lastCmt=0;
+function readComment(p,text){if(!CFG.readCmt||!CFG.voice)return;
+ let t=String(text).replace(/https?:\/\/\S+|www\.\S+/gi,' ').replace(/@\S+/g,' ').replace(/[^\p{L}\p{N}\s.,!?]/gu,' ').replace(/(.)\1{3,}/gu,'$1$1').replace(/\s+/g,' ').trim();
+ if(t.length<2||t.length>90||/^\d+$/.test(t))return;
+ if(BADW.test(t)||BADW.test(ND(t).toLowerCase()))return;
+ if(S.phase==='q'&&t.split(' ').length<=2&&t.length<=12)return;
+ const key=t.toLowerCase();if(recentCmt.includes(key))return;recentCmt.push(key);if(recentCmt.length>12)recentCmt.shift();
+ cmtQ.push({n:nm(p.name),t});if(cmtQ.length>3)cmtQ.shift();}
+setInterval(()=>{if(!CFG.voice||spBusy||SPQ.length)return;const now=performance.now();
+ if(joinBuf.length&&now-lastGreet>6500){const ns=joinBuf.splice(0,3),more=joinBuf.length;joinBuf=[];lastGreet=now;
+  let who=ns.length===1?ns[0]:ns.slice(0,-1).join(', ')+' và '+ns[ns.length-1];if(more)who+=` cùng ${more} bạn nữa`;say(line('join',who),{prio:0});return;}
+ if(socialQ.length){const s2=socialQ.shift();say(line(s2.kind,s2.n),{prio:0});return;}
+ if(cmtQ.length&&now-lastCmt>3200){const c=cmtQ.shift();lastCmt=now;say(line('cmt',c.n,c.t),{prio:0});}},700);
 
 /* ================= DEMO ================= */
 const BOTS=['Lan Anh 🌸','Minh Thư','Bảo Ngọc','Gia Huy','Khánh Linh 🎵','Tuấn Kiệt','Mai Chi','Hoàng Nam','Thu Trang','Quỳnh Như','Đức Anh','Phương Vy',
@@ -951,11 +975,11 @@ function seedDemo(){const sc=[42,26,25,18,16,13,13,13,11,11,11,11,11,10,10,10,9,
  [219,149,136,129,124].forEach((v,i)=>{player(names[i+2]).today=v;});
  names.slice(6,9).forEach(n=>player(n).gifts=1);S.gifts=7;S.q=3;S.viewers=122;S.seeded=true;}
 function startDemo(){stopDemo();if(!S.viewers)S.viewers=118;renderSub();demoGiftAt=performance.now()+11000;
- demoI=setInterval(()=>{if(Math.random()<.04&&S.viewers<190){S.viewers++;renderSub();}
+ demoI=setInterval(()=>{if(Math.random()<.04&&S.viewers<190){S.viewers++;renderSub();onJoin(rnd(BOTS));}
   if(S.phase==='q'){const el=CFG.qTime-S.left;if(el<1)return;const n=rnd(BOTS);const p=player(n);if(p.correct)return;
    const prob=.35+Math.min(.4,el/CFG.qTime*.6);
    if(Math.random()<prob)onChat(n,Math.random()<.7?S.word.ans.toLowerCase():ND(S.word.ans).toLowerCase());
-   else onChat(n,rnd([S.scr.join(''),'khó quá','gợi ý đi cô',rnd(WORD_BANK)[1].toLowerCase()]));}
+   else onChat(n,rnd([S.scr.join(''),'khó quá cô ơi','gợi ý đi cô','hay quá','em chào cô ạ','cô dễ thương quá',rnd(WORD_BANK)[1].toLowerCase()]));}
   if(performance.now()>demoGiftAt){demoGiftAt=performance.now()+18000+Math.random()*16000;onGift(rnd(BOTS),'Rose',1+Math.floor(Math.random()*3));}
  },230);}
 function stopDemo(){clearInterval(demoI);demoI=null;}
@@ -969,7 +993,7 @@ function connectWS(url){try{if(ws)ws.close();}catch(e){}wsStatus('● Đang kế
  ws.onclose=()=>{wsStatus('● Mất kết nối — thử lại sau 3 giây','#ff8a8a');if(CFG.mode==='live')setTimeout(()=>{if(CFG.mode==='live'&&(!ws||ws.readyState>1))connectWS(url);},3000);};
  ws.onmessage=e=>{let d;try{d=JSON.parse(e.data);}catch(x){return;}
   if(d.type==='chat')onChat(d.user,d.text);else if(d.type==='gift')onGift(d.user,d.gift,d.count);
-  else if(d.type==='join')onJoin(d.user);else if(d.type==='viewers'){S.liveViewers=true;S.viewers=d.count|0;renderSub();}};}
+  else if(d.type==='join')onJoin(d.user);else if(d.type==='follow'||d.type==='share')onSocial(d.type,d.user);else if(d.type==='viewers'){S.liveViewers=true;S.viewers=d.count|0;renderSub();}};}
 
 /* ================= BẢNG ĐIỀU KHIỂN ================= */
 function setMode(m,boot){const prev=CFG.mode;CFG.mode=m;saveCfg();
@@ -983,6 +1007,9 @@ function bindRange(id,lbl,key,fmt){const r=$(id);r.value=CFG[key];$(lbl).textCon
 bindRange('#rQ','#vQ','qTime');bindRange('#rR','#vR','revealTime');bindRange('#rN','#vN','qPerTiet');bindRange('#rRate','#vRate','rate',v=>(+v).toFixed(2));bindRange('#rPitch','#vPitch','pitch',v=>(+v).toFixed(2));
 function setChatty(on){CFG.chatty=on;saveCfg();document.querySelectorAll('#chatSeg button').forEach(b=>b.classList.toggle('on',(b.dataset.c==='1')===on));}
 document.querySelectorAll('#chatSeg button').forEach(b=>b.onclick=()=>setChatty(b.dataset.c==='1'));setChatty(CFG.chatty!==false);
+function bindSeg(id,key){const upd=()=>document.querySelectorAll(id+' button').forEach(b=>b.classList.toggle('on',(b.dataset.c==='1')===!!CFG[key]));
+ document.querySelectorAll(id+' button').forEach(b=>b.onclick=()=>{CFG[key]=b.dataset.c==='1';saveCfg();upd();});upd();}
+bindSeg('#cmtSeg','readCmt');bindSeg('#joinSeg','greetJoin');
 $('#selCat').innerHTML='<option value="all">Tất cả chủ đề</option>'+[...new Set(WORD_BANK.map(w=>w[0]))].map(c=>`<option>${c}</option>`).join('');
 $('#selCat').value=CFG.cat;$('#selCat').onchange=e=>{CFG.cat=e.target.value;saveCfg();};
 $('#selVoice').onchange=e=>{CFG.voiceName=e.target.value;saveCfg();};
